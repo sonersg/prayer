@@ -4,11 +4,13 @@ import {
     StyleSheet,
     View,
     Pressable,
-    ToastAndroid,
+    Button,
+    // ToastAndroid,
 } from "react-native";
-import { useEffect, useState } from "react";
+import { useContext, useEffect, useState } from "react";
 import { Country, State, City } from "country-state-city";
 import { MMKV } from "react-native-mmkv";
+import { ReRenderContext } from "../context/ReRenderContext";
 
 export const storage = new MMKV();
 
@@ -23,44 +25,69 @@ export default function App() {
             longitude: "65.12376000",
         })
     );
+    const [shouldFetch, setShouldFetch] = useState(false);
+    const { reRender, setReRender } = useContext(ReRenderContext);
 
     useEffect(() => {
-        let parsedString = JSON.parse(cityInformations);
+        let parsedCityInfos = JSON.parse(cityInformations);
 
-        fetch(
-            `https://api.aladhan.com/v1/calendar/2023/9?latitude=${parsedString.latitude}&longitude=${parsedString.longitude}&method=13`
-        )
-            .then(res => res.json())
-            .then(data => {
-                storage.set(
-                    "stringified-prayer-times-object",
-                    JSON.stringify(data)
-                );
-                storage.set("location-name", parsedString.name);
-                // invoke re render
-                // toast message: times r updated
-                ToastAndroid.showWithGravity(
-                    "Updated successfully!",
-                    ToastAndroid.LONG,
-                    ToastAndroid.CENTER
-                );
-            })
-            .catch(e => {
-                console.log(e);
-                // toast message: times couldt updaed
-                ToastAndroid.showWithGravity(
-                    "Could NOT update!",
-                    ToastAndroid.LONG,
-                    ToastAndroid.CENTER
-                );
-            });
+        console.log("use efefevt in dropdown");
+        // console.log(
+        //     JSON.parse(storage.getString("stringified-prayer-times-object"))
+        // );
 
-        // console.log(storage.getString("prayer-times-stringified-array"));
+        if (shouldFetch) {
+            console.log("fetchhhhhhhhhhhhhhhhh");
+            fetch(
+                `https://api.aladhan.com/v1/calendar/2023/9?latitude=${parsedCityInfos.latitude}&longitude=${parsedCityInfos.longitude}&method=13`
+            )
+                .then(res => res.json())
+                .then(data => {
+                    storage.set(
+                        "stringified-prayer-times-object",
+                        JSON.stringify(data)
+                    );
+
+                    storage.set("location-name", parsedCityInfos.name);
+                    // invoke re render
+                    setReRender(prev => !prev);
+                    // set shouldFetch
+                    setShouldFetch(false);
+                    // toast message: times r updated
+                    // try {
+                    //     ToastAndroid.showWithGravity(
+                    //         "Updated successfully!",
+                    //         ToastAndroid.LONG,
+                    //         ToastAndroid.CENTER
+                    //     );
+                    // } catch (error) {
+                    //     console.log(error, "error from Toast");
+                    // }
+                })
+                .catch(e => {
+                    console.log(e);
+                    // toast message: times couldt updaed
+                    // try {
+                    //     ToastAndroid.showWithGravity(
+                    //         "Could NOT update!",
+                    //         ToastAndroid.LONG,
+                    //         ToastAndroid.CENTER
+                    //     );
+                    // } catch (error) {
+                    //     console.log(error, "error from Toast");
+                    // }
+                });
+        }
     }, [cityInformations]);
 
     return (
         <SafeAreaView style={styles.mainContainer}>
             <View style={styles.viewContainer}>
+                <Button
+                    onPress={() => setReRender(prev => !prev)}
+                    title="rerender?"
+                />
+
                 <View>
                     <label>Countries</label>
                     <select
@@ -95,7 +122,10 @@ export default function App() {
                         id="Cities"
                         name="Cities"
                         // value={value}
-                        onChange={e => setcityInformations(e.target.value)}
+                        onChange={e => {
+                            setcityInformations(e.target.value);
+                            setShouldFetch(true);
+                        }}
                     >
                         {City.getCitiesOfCountry(countryCode).map(city => (
                             <option
